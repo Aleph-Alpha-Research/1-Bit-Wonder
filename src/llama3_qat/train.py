@@ -1,5 +1,5 @@
-from torchtitan.train import main, Trainer
-import llama3_qat.experiment  # noqa: F401
+from torchtitan.train import main
+from llama3_qat.experiment.trainer import QATTrainer
 
 if __name__ == "__main__":
-    main(Trainer)
+    main(QATTrainer)
