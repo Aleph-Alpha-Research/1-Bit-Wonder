@@ -1,0 +1,16 @@
+[project]
+name = "llama3_qat"
+version = "0.1.0"
+description = "Quantization-aware training with k-means based on torchtitan."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torchtitan @ git+https://github.com/pytorch/torchtitan.git@v0.2.1"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
