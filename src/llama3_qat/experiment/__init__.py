@@ -22,11 +22,11 @@ __all__ = [
     "TransformerModelArgs",
     "Transformer",
     "QATTransformer",
-    "llama3_lowp_configs",
+    "llama3_qat_configs",
 ]
 
 
-llama3_lowp_configs = {
+llama3_qat_configs = {
     "debugmodel": TransformerModelArgs(
         dim=256, n_layers=6, n_heads=16, rope_theta=500000
     ),
@@ -103,7 +103,7 @@ register_train_spec(
     name="llama3_qat",
     train_spec=TrainSpec(
         model_cls=Transformer,
-        model_args=llama3_lowp_configs,
+        model_args=llama3_qat_configs,
         parallelize_fn=parallelize_llama,
         pipelining_fn=pipeline_llm,
         build_optimizers_fn=build_optimizers,
