@@ -35,7 +35,7 @@ def load_safetensors(model_path: Path) -> dict[str, Tensor]:
     return state_dict
 
 
-def load_quantized_model(
+def load_model(
     model_path: str,
     device: str = "cuda",
     dtype: torch.dtype = torch.bfloat16,
@@ -50,15 +50,26 @@ def load_quantized_model(
     with open(model_path / "config.json") as f:
         hf_config = json.load(f)
 
-    with open(model_path / "quantization_config.json") as f:
-        quant_config = json.load(f)
+    is_quantized_model = (model_path / "quantization_config.json").is_file()
+    if is_quantized_model:
+        with open(model_path / "quantization_config.json") as f:
+            quant_config = json.load(f)
+    else:
+        quant_config = None
 
-    bits = quant_config["bits"]
-    block_size = quant_config["block_size"]
+    if is_quantized_model:
+        bits = quant_config["bits"]
+        block_size = quant_config["block_size"]
 
-    print(
-        f"Loading {hf_config['num_hidden_layers']}-layer model with {bits}-bit quantization..."
-    )
+        print(
+            f"Loading {hf_config['num_hidden_layers']}-layer model with {bits}-bit quantization..."
+        )
+    else:
+        bits = None
+        block_size = None
+        print(
+            f"Loading {hf_config['num_hidden_layers']}-layer model in Bfloat16..."
+        )
 
     # Create model architecture with meta tensors (no memory allocation)
     # This is MUCH faster than initializing random weights
@@ -70,9 +81,6 @@ def load_quantized_model(
     # Load state dict
     print("Loading weights from safetensors...")
     state_dict = load_safetensors(model_path)
-
-    # Replace Linear layers with QuantizedLinearTriton where we have quantized weights
-    print("Replacing linear layers with quantized versions...")
 
     def replace_linear(module, prefix=""):
         for name, child in list(module.named_children()):
@@ -100,10 +108,16 @@ def load_quantized_model(
             else:
                 replace_linear(child, full_name)
 
-    replace_linear(model)
+    if is_quantized_model:
+        # Replace Linear layers with QuantizedLinearTriton where we have quantized weights
+        print("Replacing linear layers with quantized versions...")
+        replace_linear(model)
 
-    # Load remaining weights (embeddings, norms) - need to materialize meta tensors
-    print("Loading embeddings and layer norms...")
+        # Load remaining weights (embeddings, norms) - need to materialize meta tensors
+        print("Loading embeddings and layer norms...")
+    else:
+        print("Loading model weights...")
+
     for name, param in list(model.named_parameters()):
         if param.device.type == "meta" and name in state_dict:
             # Materialize the meta tensor with actual data
@@ -117,9 +131,12 @@ def load_quantized_model(
     model = model.to(device)
     model.eval()
 
-    # Count layers
-    num_quant = sum(1 for m in model.modules() if isinstance(m, QuantizedLinearTriton))
-    print(f"✅ Model loaded: {num_quant} {bits}-bit quantized layers on {device}")
+    if is_quantized_model:
+        # Count layers
+        num_quant = sum(1 for m in model.modules() if isinstance(m, QuantizedLinearTriton))
+        print(f"✅ Model loaded: {num_quant} {bits}-bit quantized layers on {device}")
+    else:
+        print(f"✅ Model loaded in {dtype} on {device}")
 
     return model
 
@@ -140,7 +157,7 @@ def load_from_hf(
         allow_patterns=["*.safetensors", "*.json"],
     )
 
-    return load_quantized_model(local_path, device=device, dtype=dtype)
+    return load_model(local_path, device=device, dtype=dtype)
 
 
 # --------------------------------------------------------------------------- #
@@ -313,7 +330,7 @@ def main():
 
         tokenizer = AutoTokenizer.from_pretrained(args.hf_repo)
     else:
-        model = load_quantized_model(args.model_path, device=args.device)
+        model = load_model(args.model_path, device=args.device)
         from transformers import AutoTokenizer
 
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)

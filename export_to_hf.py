@@ -341,12 +341,12 @@ def convert_interleaved_to_split(weight: torch.Tensor, n_heads: int) -> torch.Te
 # --------------------------------------------------------------------------- #
 
 
-def export_quantized_model(
+def export_model(
     checkpoint_dir: str | Path,
     output_dir: str | Path,
     model_args: TransformerModelArgs,
-    quant_config: Quantization,
-    tokenizer_path: str | Path | None = None,
+    quant_config: Quantization | None,
+    tokenizer_path: str | Path | None,
     max_shard_size_gb: float = 5.0,
 ) -> Path:
     """Export quantized model to HuggingFace-compatible format.
@@ -365,16 +365,15 @@ def export_quantized_model(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bits = quant_config.target_bit_width
-    block_size = quant_config.block_dim_2 or 64
-    relative_scale = quant_config.relative_scale
-    skip_layers = quant_config.ignore_names or []
 
     print(f"\n{'='*60}")
-    print(f"Exporting quantized model")
+    print(f"Exporting model")
     print(f"  Model: dim={model_args.dim}, n_layers={model_args.n_layers}")
-    print(f"  Quantization: {bits}-bit, block_size={block_size}")
-    print(f"  Relative scale: {relative_scale}")
+    if quant_config is not None:
+        print(f"  Quantization: {quant_config.target_bit_width}-bit, block_size={quant_config.target_bit_width or 64}")
+        print(f"  Relative scale: {quant_config.relative_scale}")
+    else:
+        print(f"  Not applying Quantization")
     print(f"  Output: {output_dir}")
     print(f"{'='*60}\n")
 
@@ -404,9 +403,21 @@ def export_quantized_model(
             continue
 
         # Check if should skip quantization (embeddings, norms, output)
-        should_skip = any(skip in tt_name for skip in skip_layers)
+        if quant_config is None:
+            # we skip quantization altogether if no quantization config is given
+            should_skip = True
+        else:
+            skip_layers = quant_config.ignore_names or []
+            should_skip = any(skip in tt_name for skip in skip_layers)
+
         is_embedding = "tok_embeddings" in tt_name or "output" in tt_name
         is_norm = "norm" in tt_name
+
+        # HF uses a different rope implementation which we need to account for
+        if "wq" in tt_name:
+            tensor = convert_interleaved_to_split(tensor, model_args.n_heads)
+        if "wk" in tt_name:
+            tensor = convert_interleaved_to_split(tensor, model_args.n_kv_heads)
 
         if should_skip or is_embedding or is_norm:
             # Save as bf16 directly
@@ -415,18 +426,13 @@ def export_quantized_model(
             # Quantize linear layers
             layer_path = tt_name.replace(".weight", "")
             centroids = centroids_map.get(layer_path)
-            # HF uses a different rope implementation which we need to account for
-            if "wq" in tt_name:
-                tensor = convert_interleaved_to_split(tensor, model_args.n_heads)
-            if "wk" in tt_name:
-                tensor = convert_interleaved_to_split(tensor, model_args.n_kv_heads)
             try:
                 packed, scales, centroids_sorted = quantize_weight(
                     tensor.float(),
                     centroids.float(),
-                    bits=bits,
-                    block_size=block_size,
-                    relative_scale=relative_scale,
+                    bits=quant_config.target_bit_width,
+                    block_size=quant_config.block_dim_2 or 64,
+                    relative_scale=quant_config.relative_scale,
                 )
 
                 base_name = hf_name.replace(".weight", "")
@@ -461,18 +467,19 @@ def export_quantized_model(
         json.dump(hf_config, f, indent=2)
 
     # quantization_config.json
-    quant_dict = {
-        "quant_method": quant_config.quantizer,
-        "bits": bits,
-        "block_size": block_size,
-        "relative_scale": relative_scale,
-        "num_centroids": 2**bits,
-    }
-    if len(centroids_map) > 0:
-        sample_c = list(centroids_map.values())[0]
-        quant_dict["centroids"] = sample_c.sort()[0].tolist()
-    with open(output_dir / "quantization_config.json", "w") as f:
-        json.dump(quant_dict, f, indent=2)
+    if quant_config is not None:
+        quant_dict = {
+            "quant_method": quant_config.quantizer,
+            "bits": quant_config.target_bit_width,
+            "block_size": quant_config.block_dim_2 or 64,
+            "relative_scale": quant_config.relative_scale,
+            "num_centroids": 2**(quant_config.target_bit_width),
+        }
+        if len(centroids_map) > 0:
+            sample_c = list(centroids_map.values())[0]
+            quant_dict["centroids"] = sample_c.sort()[0].tolist()
+        with open(output_dir / "quantization_config.json", "w") as f:
+            json.dump(quant_dict, f, indent=2)
 
     # generation_config.json
     gen_config = create_generation_config()
@@ -480,7 +487,10 @@ def export_quantized_model(
         json.dump(gen_config, f, indent=2)
 
     # README.md
-    _save_readme(output_dir, model_args, quant_config)
+    if quant_config is None:
+        _save_readme_unquantized(output_dir, model_args)
+    else:
+        _save_readme_quantized(output_dir, model_args, quant_config)
 
     print(f"\n{'='*60}")
     print(f"Export complete!")
@@ -602,7 +612,7 @@ def _save_tokenizer(output_dir: Path, tokenizer_path: str | Path) -> int:
         return 128256
 
 
-def _save_readme(
+def _save_readme_quantized(
     output_dir: Path,
     model_args: TransformerModelArgs,
     quant_config: Quantization,
@@ -642,24 +652,36 @@ Linear layers are quantized:
 
 Embeddings and norms are stored as bfloat16.
 
-## Usage
+## License
+See LICENSE file in the repository.
+"""
+    with open(output_dir / "README.md", "w") as f:
+        f.write(readme)
 
-### With chat_quantized.py (recommended for inference)
-```bash
-python scripts/checkpoint_conversion/chat_quantized.py \\
-    --model_path {output_dir.name} \\
-    --interactive
+
+def _save_readme_unquantized(
+    output_dir: Path,
+    model_args: TransformerModelArgs,
+) -> None:
+    """Generate README.md for the model."""
+
+    # Compute model size string
+    n_params = _estimate_params(model_args)
+    model_size = f"{n_params / 1e9:.1f}B"
+
+    readme = f"""# LLaMA {model_size} - Bfloat16
+
+## Model Details
+- **Architecture**: LLaMA
+- **Size**: {model_size} ({n_params:,} parameters)
+
+## Directory Structure
 ```
-
-### Custom loading
-```python
-from safetensors.torch import load_file
-import json
-
-with open("{output_dir.name}/quantization_config.json") as f:
-    quant_config = json.load(f)
-
-weights = load_file("{output_dir.name}/model.safetensors")
+.
+├── config.json                  # HuggingFace model config
+├── generation_config.json       # Default generation settings
+├── tokenizer.json              # Tokenizer files
+└── model.safetensors           # Weights (in Bfloat16)
 ```
 
 ## License
@@ -701,7 +723,7 @@ def upload_to_hub(
     api.upload_folder(
         folder_path=str(model_dir),
         repo_id=repo_id,
-        commit_message="Upload quantized model",
+        commit_message="Upload model",
     )
 
     url = f"https://huggingface.co/{repo_id}"
@@ -721,14 +743,14 @@ def main():
         epilog="""
 Examples:
     # Basic export
-    python export_quantized.py /path/to/checkpoint ./output --model_size 8B
+    python export_to_hf.py /path/to/checkpoint ./output --model_size 8B
 
     # With custom quantization settings
-    python export_quantized.py /path/to/checkpoint ./output \\
+    python export_to_hf.py /path/to/checkpoint ./output \\
         --model_size 30B --bits 1 --block_size 64 --relative_scale absmean
 
     # Upload to HuggingFace Hub
-    python export_quantized.py /path/to/checkpoint ./output \\
+    python export_to_hf.py /path/to/checkpoint ./output \\
         --model_size 8B --upload_to_hub username/my-quantized-llama
         """,
     )
@@ -754,8 +776,8 @@ Examples:
         "--bits",
         type=int,
         default=1,
-        choices=[1, 2, 4, 8],
-        help="Quantization bit width",
+        choices=[1, 2, 4, 8, 16],
+        help="Quantization bit width. 16bit = Bfloat16",
     )
     parser.add_argument(
         "--block_size",
@@ -794,13 +816,16 @@ Examples:
     model_args = llama3_qat_configs[args.model_size]
 
     # Create quantization config
-    quant_config = Quantization(
-        target_bit_width=args.bits,
-        block_dim_2=args.block_size,
-        relative_scale=args.relative_scale,
-    )
+    if args.bits == 16:
+        quant_config = None
+    else:
+        quant_config = Quantization(
+            target_bit_width=args.bits,
+            block_dim_2=args.block_size,
+            relative_scale=args.relative_scale,
+        )
 
-    output_dir = export_quantized_model(
+    output_dir = export_model(
         checkpoint_dir=args.checkpoint_path,
         output_dir=args.output_dir,
         model_args=model_args,
