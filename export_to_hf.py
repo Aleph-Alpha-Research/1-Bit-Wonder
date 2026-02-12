@@ -307,31 +307,31 @@ def quantize_weight(
 def convert_interleaved_to_split(weight: torch.Tensor, n_heads: int) -> torch.Tensor:
     """
     Convert Q/K projection weights from interleaved to split-halves RoPE layout.
-    
+
     Args:
         weight: Shape (n_heads * head_dim, hidden_dim) for Q/K projections
         n_heads: Number of attention heads (use n_kv_heads for K)
-    
+
     Returns:
         Permuted weight matrix compatible with split-halves RoPE
     """
     out_features, in_features = weight.shape
     head_dim = out_features // n_heads
-    
+
     # Reshape to (n_heads, head_dim, in_features)
     w = weight.view(n_heads, head_dim, in_features)
-    
+
     # Current layout per head: [re0, im0, re1, im1, ...]
     # Split into pairs
     w = w.view(n_heads, head_dim // 2, 2, in_features)
-    
+
     # Reorder: gather all real parts, then all imaginary parts
     # From (n_heads, head_dim//2, 2, in) -> (n_heads, 2, head_dim//2, in)
     w = w.permute(0, 2, 1, 3)
-    
+
     # Flatten back: (n_heads, head_dim, in_features)
     w = w.reshape(n_heads, head_dim, in_features)
-    
+
     # Final shape: (n_heads * head_dim, in_features)
     return w.view(out_features, in_features)
 
@@ -365,17 +365,18 @@ def export_model(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Exporting model")
     print(f"  Model: dim={model_args.dim}, n_layers={model_args.n_layers}")
     if quant_config is not None:
-        print(f"  Quantization: {quant_config.target_bit_width}-bit, block_size={quant_config.target_bit_width or 64}")
+        print(
+            f"  Quantization: {quant_config.target_bit_width}-bit, block_size={quant_config.target_bit_width or 64}"
+        )
         print(f"  Relative scale: {quant_config.relative_scale}")
     else:
         print(f"  Not applying Quantization")
     print(f"  Output: {output_dir}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Load checkpoint
     state_dict = load_dcp_checkpoint(checkpoint_dir)
@@ -473,7 +474,7 @@ def export_model(
             "bits": quant_config.target_bit_width,
             "block_size": quant_config.block_dim_2 or 64,
             "relative_scale": quant_config.relative_scale,
-            "num_centroids": 2**(quant_config.target_bit_width),
+            "num_centroids": 2 ** (quant_config.target_bit_width),
         }
         if len(centroids_map) > 0:
             sample_c = list(centroids_map.values())[0]
@@ -492,10 +493,10 @@ def export_model(
     else:
         _save_readme_quantized(output_dir, model_args, quant_config)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Export complete!")
     print(f"Output directory: {output_dir}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     return output_dir
 

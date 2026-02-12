@@ -350,6 +350,5 @@ class QuantizedLinearTriton(torch.nn.Module):
 
         return out
 
-
     def extra_repr(self) -> str:
         return f"in={self.in_features}, out={self.out_features}, bits={self.bits}, block={self.block_size}"

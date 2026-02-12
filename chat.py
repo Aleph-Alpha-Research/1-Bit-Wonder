@@ -67,9 +67,7 @@ def load_model(
     else:
         bits = None
         block_size = None
-        print(
-            f"Loading {hf_config['num_hidden_layers']}-layer model in Bfloat16..."
-        )
+        print(f"Loading {hf_config['num_hidden_layers']}-layer model in Bfloat16...")
 
     # Create model architecture with meta tensors (no memory allocation)
     # This is MUCH faster than initializing random weights
@@ -133,7 +131,9 @@ def load_model(
 
     if is_quantized_model:
         # Count layers
-        num_quant = sum(1 for m in model.modules() if isinstance(m, QuantizedLinearTriton))
+        num_quant = sum(
+            1 for m in model.modules() if isinstance(m, QuantizedLinearTriton)
+        )
         print(f"✅ Model loaded: {num_quant} {bits}-bit quantized layers on {device}")
     else:
         print(f"✅ Model loaded in {dtype} on {device}")
@@ -277,7 +277,6 @@ def interactive_chat(
         print("\n")
         print("\033[94mAssistant:\033[0m ", end="", flush=True)
 
-
         # Build generation kwargs
         gen_kwargs = {
             "max_new_tokens": max_new_tokens,
@@ -334,12 +333,11 @@ def main():
         from transformers import AutoTokenizer
 
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    
+
     print("\n" + "=" * 60)
     print("Chat with LLaMA")
     print("Type 'quit' or 'exit' to end, 'clear' to reset context")
     print("=" * 60 + "\n")
-
 
     interactive_chat(
         model,
@@ -348,7 +346,6 @@ def main():
         temperature=args.temperature,
         top_p=args.top_p,
     )
-
 
 
 if __name__ == "__main__":

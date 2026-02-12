@@ -10,7 +10,6 @@ from .lloyd_max import lut_lloyd_max
 
 @dataclass
 class QuantizerArgs:
-
     target_bit_width: int = 8
 
     block_dim_1: int | None = 1
@@ -153,9 +152,9 @@ class TernaryQuantizer(BaseQuantizer):
 
     def __init__(self, args: QuantizerArgs):
         super().__init__(args)
-        assert (
-            self.args.relative_scale == "absmean"
-        ), f"Ternary quantizer has to use absmean relative scale, {self.args.relative_scale} selected."
+        assert self.args.relative_scale == "absmean", (
+            f"Ternary quantizer has to use absmean relative scale, {self.args.relative_scale} selected."
+        )
 
     def range_transform(self, w: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # scales, then clips values to [-1, 1]
@@ -173,9 +172,9 @@ class BinaryQuantizer(BaseQuantizer):
 
     def __init__(self, args: QuantizerArgs):
         super().__init__(args)
-        assert (
-            self.args.relative_scale == "absmean"
-        ), f"Binary quantizer has to use absmean relative scale, {self.args.relative_scale} selected."
+        assert self.args.relative_scale == "absmean", (
+            f"Binary quantizer has to use absmean relative scale, {self.args.relative_scale} selected."
+        )
 
     def range_transform(
         self, w: torch.Tensor

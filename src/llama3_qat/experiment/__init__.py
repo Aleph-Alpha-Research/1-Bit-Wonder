@@ -14,7 +14,12 @@ from torchtitan.protocols.train_spec import register_train_spec, TrainSpec
 from torchtitan.protocols.model_converter import register_model_converter
 from .quantized_linear import QuantizedLinearConverter
 
-from torchtitan.hf_datasets.text_datasets import DatasetConfig, DATASETS, load_dataset, _process_c4_text
+from torchtitan.hf_datasets.text_datasets import (
+    DatasetConfig,
+    DATASETS,
+    load_dataset,
+    _process_c4_text,
+)
 
 __all__ = [
     "parallelize_llama",
@@ -118,7 +123,7 @@ register_train_spec(
 register_model_converter(QuantizedLinearConverter, "quantized_linear")
 
 DATASETS["test_dataset"] = DatasetConfig(
-        path="debug_assets/c4_test",
-        loader=lambda path: load_dataset(path, split="train"),
-        sample_processor=_process_c4_text,
-    )
+    path="debug_assets/c4_test",
+    loader=lambda path: load_dataset(path, split="train"),
+    sample_processor=_process_c4_text,
+)

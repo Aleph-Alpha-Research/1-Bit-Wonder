@@ -4,9 +4,7 @@ from typing import Literal
 
 @dataclass
 class Quantization:
-    quantizer: Literal[
-        "sym_int", "ternary", "binary", "nonlinear"
-    ] = "sym_int"
+    quantizer: Literal["sym_int", "ternary", "binary", "nonlinear"] = "sym_int"
 
     ignore_names: tuple[str, ...] = ("output",)
 
@@ -23,6 +21,7 @@ class Quantization:
     buffer_update_interval: int | None = None  # disable by default
 
     qat_start_step: int = 0
+
 
 @dataclass
 class JobConfig:

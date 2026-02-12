@@ -180,4 +180,3 @@ def lut_lloyd_max(
             n *= 2
     assert (midpoints[:-1] <= midpoints[1:]).all().item()
     return midpoints
-

@@ -5,6 +5,7 @@ from .config import Quantization as QuantizationConfig
 from .quantized_linear import QuantizedLinear
 from torchtitan.tools.logging import logger
 
+
 def get_fisher_diagonal_weight_per_param(
     trainer: Trainer,
 ) -> dict[torch.nn.Parameter, torch.Tensor]:
@@ -12,9 +13,9 @@ def get_fisher_diagonal_weight_per_param(
     beta2 = trainer.job_config.optimizer.beta2
     for opt in trainer.optimizers.optimizers:
         # Only use AdamW optimizers
-        assert isinstance(
-            opt, (torch.optim.AdamW, torch.optim.Adam)
-        ), "Currently only Adam is supported for getting diagonal Fisher weights"
+        assert isinstance(opt, (torch.optim.AdamW, torch.optim.Adam)), (
+            "Currently only Adam is supported for getting diagonal Fisher weights"
+        )
         for group in opt.param_groups:
             for p in group["params"]:
                 assert isinstance(p, torch.nn.Parameter)
@@ -30,8 +31,8 @@ def get_fisher_diagonal_weight_per_param(
 
     return weight_per_param
 
-class QATTrainer(Trainer):
 
+class QATTrainer(Trainer):
     def _quantization_buffer_update_callback(self) -> None:
         qcfg: QuantizationConfig = self.job_config.quantization
         qat_start_step = qcfg.qat_start_step or 0
