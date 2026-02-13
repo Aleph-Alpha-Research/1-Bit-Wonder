@@ -57,7 +57,7 @@ llama3_qat_configs = {
         attn_mask_type="block_causal",
         attn_type="flex",
     ),
-    "3B": TransformerModelArgs(
+    "4B": TransformerModelArgs(
         dim=3072,
         n_layers=24,
         n_heads=24,
@@ -68,18 +68,7 @@ llama3_qat_configs = {
         attn_mask_type="block_causal",
         attn_type="flex",
     ),
-    "8B": TransformerModelArgs(
-        dim=4096,
-        n_layers=32,
-        n_heads=32,
-        n_kv_heads=8,
-        ffn_dim_multiplier=1.3,
-        multiple_of=1024,
-        rope_theta=500000,
-        attn_mask_type="block_causal",
-        attn_type="flex",
-    ),
-    "11B": TransformerModelArgs(
+    "12B": TransformerModelArgs(
         dim=4096,
         n_layers=48,
         n_heads=32,
@@ -90,7 +79,7 @@ llama3_qat_configs = {
         attn_mask_type="block_causal",
         attn_type="flex",
     ),
-    "30B": TransformerModelArgs(
+    "31B": TransformerModelArgs(
         dim=6144,
         n_layers=60,
         n_heads=48,
