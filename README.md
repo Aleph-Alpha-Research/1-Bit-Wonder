@@ -2,7 +2,7 @@
 
 ![](image.png)
 
-This repository contains training and inference code supplementing the paper [1-Bit-Wonder: Improving QAT Performance in the Low-Bit Regime through K-Means Quantization](). We implement quantization-aware-training (QAT) with standard integer quantization as well as k-means based quantization which can be run via Torchtitan, as well as providing a Huggingface inference implementation that utilizes [kernels]() optimized for k-means quantization.
+This repository contains training and inference code supplementing the paper [1-Bit-Wonder: Improving QAT Performance in the Low-Bit Regime through K-Means Quantization](). We implement quantization-aware-training (QAT) with standard integer quantization as well as k-means based quantization which can be run via Torchtitan, as well as providing a Huggingface inference implementation that utilizes [kernels](https://github.com/graphcore-research/fused-dequantisation-kernels) optimized for k-means quantization.
 
 ## Installation
 
