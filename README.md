@@ -39,7 +39,7 @@ The rest of the config contains standard Torchtitan subconfig and fields.
 
 ## Inference
 
-Our inference is based on the Hugginface implementation of Llama3. To prepare a checkpoint after training for inference, use
+Our inference is based on the Hugginface implementation of Llama3, patched with efficient [kernels](https://github.com/graphcore-research/fused-dequantisation-kernels) for k-means dequantization. To prepare a checkpoint after training for inference, use
 
 ```bash
 python export_to_hf.py /your/checkpoint/after/training /output/path/for/inference/checkpoint
