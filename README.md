@@ -60,4 +60,5 @@ or download the checkpoint directly from Huggingface by specifying `--hf_repo` i
 
 All of the above checkpoints use ~8GB of weight memory and can be run on consumer GPUs.
 
+DISCLAIMER: All of the above checkpoints are trained from scratch, but use the Llama-3.1 tokenizer and are therefore built with Llama and subject to the Llama 3.1 community license agreement.
 
