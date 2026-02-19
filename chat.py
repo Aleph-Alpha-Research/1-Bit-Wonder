@@ -244,7 +244,7 @@ def interactive_chat(
 
     while True:
         try:
-            user_input = input("\033[92mYou:\033[0m ").strip()
+            user_input = input("\001\033[92m\002You:\001\033[0m\002 ").strip()
         except (KeyboardInterrupt, EOFError):
             print("\nGoodbye!")
             break
