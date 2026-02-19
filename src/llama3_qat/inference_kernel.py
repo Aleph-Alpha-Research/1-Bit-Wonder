@@ -116,7 +116,6 @@ class QuantizedLinearTriton(torch.nn.Module):
             self.centroids,  # Pass centroids, mm_lut builds LUT
             self.scales.to(x.dtype),
             bits=self.bits,
-            block_size=self.block_size,
         )
 
         # Reshape back
