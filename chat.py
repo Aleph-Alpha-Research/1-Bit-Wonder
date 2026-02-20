@@ -256,11 +256,6 @@ def interactive_chat(
             print("Goodbye!")
             break
 
-        if user_input.lower() == "clear":
-            model.reset_cache()
-            print("Context cleared.")
-            continue
-
         # Format with chat template
         messages = [
             {"role": "system", "content": system_prompt},
@@ -336,7 +331,7 @@ def main():
 
     print("\n" + "=" * 60)
     print("Chat with LLaMA")
-    print("Type 'quit' or 'exit' to end, 'clear' to reset context")
+    print("Type 'quit' or 'exit' to end the chat.")
     print("=" * 60 + "\n")
 
     interactive_chat(
